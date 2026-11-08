@@ -9,7 +9,7 @@ pub struct TypoMatch {
     pub similarity: f64,
 }
 
-/// Computes the Levenshtein distance between two strings
+/// Computes the Damerau-Levenshtein distance (including adjacent character transpositions)
 pub fn levenshtein_distance(a: &str, b: &str) -> usize {
     let a_chars: Vec<char> = a.chars().collect();
     let b_chars: Vec<char> = b.chars().collect();
@@ -24,11 +24,16 @@ pub fn levenshtein_distance(a: &str, b: &str) -> usize {
         return m;
     }
 
-    let mut prev_row: Vec<usize> = (0..=n).collect();
-    let mut curr_row: Vec<usize> = vec![0; n + 1];
+    let mut d = vec![vec![0usize; n + 1]; m + 1];
+
+    for i in 0..=m {
+        d[i][0] = i;
+    }
+    for j in 0..=n {
+        d[0][j] = j;
+    }
 
     for i in 1..=m {
-        curr_row[0] = i;
         for j in 1..=n {
             let cost = if a_chars[i - 1] == b_chars[j - 1] {
                 0
@@ -36,14 +41,24 @@ pub fn levenshtein_distance(a: &str, b: &str) -> usize {
                 1
             };
 
-            curr_row[j] = (prev_row[j] + 1)
-                .min(curr_row[j - 1] + 1)
-                .min(prev_row[j - 1] + cost);
+            let mut min_val = (d[i - 1][j] + 1)
+                .min(d[i][j - 1] + 1)
+                .min(d[i - 1][j - 1] + cost);
+
+            // Adjacent transposition (Damerau condition)
+            if i > 1
+                && j > 1
+                && a_chars[i - 1] == b_chars[j - 2]
+                && a_chars[i - 2] == b_chars[j - 1]
+            {
+                min_val = min_val.min(d[i - 2][j - 2] + 1);
+            }
+
+            d[i][j] = min_val;
         }
-        prev_row.copy_from_slice(&curr_row);
     }
 
-    prev_row[n]
+    d[m][n]
 }
 
 /// Computes normalized similarity between 0.0 and 1.0
